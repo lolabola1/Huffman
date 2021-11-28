@@ -49,7 +49,6 @@ public class HuffProcessor {
 	public HuffProcessor() {
 		this(false);
 	}
-
 	public HuffProcessor(boolean debug) {
 		myDebugging = debug;
 	}
@@ -62,17 +61,6 @@ public class HuffProcessor {
 	 * @param out
 	 *            Buffered bit stream writing to the output file.
 	 */
-	public void compress(BitInputStream in, BitOutputStream out){
-
-
-		// remove all this code when implementing compress
-		while (true){
-			int val = in.readBits(BITS_PER_WORD);
-			if (val == -1) break;
-			out.writeBits(BITS_PER_WORD, val);
-		}
-		out.close();
-	}
 
 	/**
 	 * Decompresses a file. Output file must be identical bit-by-bit to the
@@ -81,54 +69,49 @@ public class HuffProcessor {
 	 * @param in
 	 *            Buffered bit stream of the file to be decompressed.
 	 * @param out
-	 *            Buffered bit stream writing to the output file.
+	 *            Buffered bit stream writing to the output file
+	 *
 	 */
-	public void decompress(BitInputStream in, BitOutputStream out) {
-
-		// remove all code when implementing decompress
-		int bits = in.readBits(BITS_PER_INT);
-		if (bits != HUFF_TREE) {
-			throw new HuffException("invalid magic number" + bits);
+	public void decompress(BitInputStream in, BitOutputStream out){
+		int huffnum = in.readBits(BITS_PER_INT);
+		if (huffnum != HUFF_TREE) {
+			throw new HuffException("Invalid magic number" + huffnum);
 		}
+
 		HuffNode root = readTree(in);
 		HuffNode current = root;
+
 		while (true) {
-			int bs = in.readBits(1);
-			if (bs == -1)
-				throw new HuffException("bad input, no PSEUDO_EOF");
-			else
-				if (bs == 0){
-					current = current.left;}
-				else {
-					current = current.right;
-				}
-				if( current.left == null && current.right == null){
-					if (current.value == PSEUDO_EOF)
-						System.out.print(current.value);
-						break;}
-					else{
-					out.writeBits(BITS_PER_WORD, current.value);
-					current = root;}
-
+			int bits = in.readBits(1);
+			if (bits == -1) {
+				throw new HuffException("invalid bits found"); }
+			if (bits == 0) {
+				current = current.left;
 			}
+			else {
+				current = current.right;
+			}
+			if (current.left == null && current.right == null) {
+				if (current.value == PSEUDO_EOF) {
+					break;
+				} else {
+					out.writeBits(BITS_PER_WORD, current.value);
+					current = root;
+				}
+			}
+		}
 		out.close();
-
 	}
-
 	private HuffNode readTree(BitInputStream in) {
 		int bit = in.readBits(1);
-		if (bit == -1){
-			throw new HuffException("reading failed");
-		}
-		if (bit == 0){
+		if (bit == -1) {throw new HuffException("No bits found");}
+		if (bit == 0) {
 			HuffNode left = readTree(in);
-			HuffNode right= readTree(in);
+			HuffNode right = readTree(in);
 			return new HuffNode(0,0,left,right);
 		}
-
 		else {
 			int value = in.readBits(BITS_PER_WORD + 1);
-			return new HuffNode(value,0,null,null);}
-
-	}
-}
+			return new HuffNode(value,0,null,null);
+		}
+	}}
