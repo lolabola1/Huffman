@@ -72,6 +72,68 @@ public class HuffProcessor {
 	 *            Buffered bit stream writing to the output file
 	 *
 	 */
+	public void compress(BitInputStream in, BitOutputStream out){
+		int[] counts = getCounts(in);
+		HuffNode root = makeTree(counts);
+		in.reset();
+		out.writeBits(BITS_PER_INT, HUFF_TREE);
+		writeTree(root,out);
+		String[] encodings = new String[ALPH_SIZE+1];
+		makeEncodings(root," ", encodings);
+		int a = 0;
+		while(a != -1){
+			a = in.readBits(BITS_PER_WORD);
+			String code = encodings[a];
+			out.writeBits(code.length(), Integer.parseInt(code, 2));
+		}
+		out.close();
+	}
+
+	private void writeTree(HuffNode root, BitOutputStream out) {
+		if (root == null){return;}
+		if (root.left == null && root.right == null){out.writeBits(BITS_PER_WORD+ 2, 1 + root.value);}
+		else{out.writeBits(1, 0);
+			writeTree(root.left, out);
+			writeTree(root.right,out);
+	}}
+	private void makeEncodings(HuffNode root,String path, String[] encodings) {
+		if (root == null) {return;}
+		if(root.left == null && root.right == null){
+			encodings[root.value] = path;
+		}
+		if (root.left != null && root.right == null){
+			makeEncodings(root.left, path + 0, encodings);
+			makeEncodings(root.right, path + 1, encodings);}
+	}
+
+	private HuffNode makeTree(int[] counts) {
+		PriorityQueue<HuffNode> pq = new PriorityQueue<>();
+		for(int k  = 0; k < ALPH_SIZE; k+=1){
+			if (counts[k] > 0){
+			pq.add(new HuffNode(k, counts[k],null, null));
+		}
+	}
+		while (pq.size() > 1){
+			HuffNode left = pq.remove();
+			HuffNode right = pq.remove();
+			HuffNode t = new HuffNode( 0, left.weight + right.weight, left, right );
+			pq.add(t);
+		}
+		HuffNode root = pq.remove();
+		return root;
+	}
+
+	private int[] getCounts(BitInputStream in) {
+		int[] counts = new int[ALPH_SIZE];
+		while (true){
+		int a = in.readBits(BITS_PER_WORD);
+		if (a == -1){break;}
+		counts[a] += 1;}
+		 return counts;
+
+	}
+	
+
 	public void decompress(BitInputStream in, BitOutputStream out){
 		int huffnum = in.readBits(BITS_PER_INT);
 		if (huffnum != HUFF_TREE) {
