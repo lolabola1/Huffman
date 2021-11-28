@@ -83,37 +83,37 @@ public class HuffProcessor {
 		while (true) {
 			int a = in.readBits(BITS_PER_WORD);
 			if (a == -1){
-				String code = encodings[PSEUDO_EOF];
 				break;
 			}
 			String code = encodings[a];
 			out.writeBits(code.length(), Integer.parseInt(code, 2));
 		}
+		String code = encodings[PSEUDO_EOF];
+		out.writeBits(code.length(), Integer.parseInt(code,2));
 
 		out.close();
 	}
 
 
 	private void writeTree(HuffNode root, BitOutputStream out) {
-		if (root == null){return;}
-		if (root.left == null && root.right == null){out.writeBits(BITS_PER_WORD+ 2, 1 + root.value);}
+		if (root.left == null && root.right == null){out.writeBits(1,1);
+			out.writeBits(BITS_PER_WORD+ 1,  root.value);}
 		else{out.writeBits(1, 0);
 			writeTree(root.left, out);
 			writeTree(root.right,out);
 	}}
 	private void makeEncodings(HuffNode root,String path, String[] encodings) {
-		if (root == null) {return;}
 		if(root.left == null && root.right == null){
 			encodings[root.value] = path;
+			return;
 		}
-		if (root.left != null && root.right == null){
-			makeEncodings(root.left, path + 0, encodings);
-			makeEncodings(root.right, path + 1, encodings);}
+		makeEncodings(root.left, path + 0, encodings);
+		makeEncodings(root.right, path + 1, encodings);
 	}
 
 	private HuffNode makeTree(int[] counts) {
 		PriorityQueue<HuffNode> pq = new PriorityQueue<>();
-		for(int k  = 0; k < ALPH_SIZE + 1; k+=1){
+		for(int k  = 0; k < counts.length + 1; k+=1){
 			if (counts[k] > 0){
 			pq.add(new HuffNode(k, counts[k],null, null));
 		}
@@ -129,11 +129,12 @@ public class HuffProcessor {
 	}
 
 	private int[] getCounts(BitInputStream in) {
-		int[] counts = new int[ALPH_SIZE];
+		int[] counts = new int[ALPH_SIZE + 1];
 		while (true){
 		int a = in.readBits(BITS_PER_WORD);
-		if (a == -1){break;}
+		if (a == -1|| a == PSEUDO_EOF){break;}
 		counts[a] += 1;}
+		counts[PSEUDO_EOF] ++;
 		 return counts;
 
 	}
