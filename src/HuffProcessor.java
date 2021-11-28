@@ -7,7 +7,7 @@ import java.util.PriorityQueue;
  * <P>
  * Changes include relying solely on a tree for header information
  * and including debug and bits read/written information
- * 
+ *
  * @author Ow	en Astrachan
  *
  * Revise
@@ -39,17 +39,17 @@ public class HuffProcessor {
 
 	public static final int BITS_PER_WORD = 8;
 	public static final int BITS_PER_INT = 32;
-	public static final int ALPH_SIZE = (1 << BITS_PER_WORD); 
+	public static final int ALPH_SIZE = (1 << BITS_PER_WORD);
 	public static final int PSEUDO_EOF = ALPH_SIZE;
 	public static final int HUFF_NUMBER = 0xface8200;
 	public static final int HUFF_TREE  = HUFF_NUMBER | 1;
 
 	private boolean myDebugging = false;
-	
+
 	public HuffProcessor() {
 		this(false);
 	}
-	
+
 	public HuffProcessor(boolean debug) {
 		myDebugging = debug;
 	}
@@ -83,15 +83,52 @@ public class HuffProcessor {
 	 * @param out
 	 *            Buffered bit stream writing to the output file.
 	 */
-	public void decompress(BitInputStream in, BitOutputStream out){
+	public void decompress(BitInputStream in, BitOutputStream out) {
 
 		// remove all code when implementing decompress
-
-		while (true){
-			int val = in.readBits(BITS_PER_WORD);
-			if (val == -1) break;
-			out.writeBits(BITS_PER_WORD, val);
+		int bits = in.readBits(BITS_PER_INT);
+		if (bits != HUFF_TREE) {
+			throw new HuffException("invalid magic number" + bits);
 		}
+		HuffNode root = readTree(in);
+		HuffNode current = root;
+		while (true) {
+			int bs = in.readBits(1);
+			if (bs == -1)
+				throw new HuffException("bad input, no PSEUDO_EOF");
+			else
+				if (bs == 0){
+					current = current.left;}
+				else {
+					current = current.right;
+				}
+				if( current.left == null && current.right == null){
+					if (current.value == PSEUDO_EOF)
+						System.out.print(current.value);
+						break;}
+					else{
+					out.writeBits(BITS_PER_WORD, current.value);
+					current = root;}
+
+			}
 		out.close();
+
+	}
+
+	private HuffNode readTree(BitInputStream in) {
+		int bit = in.readBits(1);
+		if (bit == -1){
+			throw new HuffException("reading failed");
+		}
+		if (bit == 0){
+			HuffNode left = readTree(in);
+			HuffNode right= readTree(in);
+			return new HuffNode(0,0,left,right);
+		}
+
+		else {
+			int value = in.readBits(BITS_PER_WORD + 1);
+			return new HuffNode(value,0,null,null);}
+
 	}
 }
